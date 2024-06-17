@@ -1,0 +1,40 @@
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path pe-33-manifest \
+  --output-path seq-demux.qza \
+  --input-format PairedEndFastqManifestPhred33V2
+
+
+Join:
+
+qiime vsearch join-pairs --i-demultiplexed-seqs seq-demux.qza --o-joined-sequences joined-demux
+
+Dereplicate:
+
+qiime vsearch dereplicate-sequences \
+  --i-sequences seqs-demux.qza \
+  --o-dereplicated-table table.qza \
+  --o-dereplicated-sequences rep-seqs.qza
+
+
+# download Database
+wget ftp://greengenes.microbio.me/greengenes_release/gg_13_5/gg_13_5_otus.tar.gz 
+
+# uncompress DB
+tar -xvzf gg_13_5_otus.tar.gz
+
+# import fasta seqs
+qiime tools import --type 'FeatureData[Sequence]' --input-path gg_13_5_otus/rep_set/97_otus.fasta --output-path 97_otus-GG.qza 
+
+# import taxonomy
+qiime tools import --type 'FeatureData[Taxonomy]' --source-format HeaderlessTSVTaxonomyFormat --input-path gg_13_5_otus/taxonomy/97_otu_taxonomy.txt --output-path 97_otu-ref-taxonomy-GG.qza 
+
+# Close-ref Clustering
+qiime vsearch cluster-features-closed-reference \
+  --i-table table.qza \
+  --i-sequences rep-seqs.qza \
+  --i-reference-sequences 85_otus.qza \
+  --p-perc-identity 0.85 \
+  --o-clustered-table table-cr-85.qza \
+  --o-clustered-sequences rep-seqs-cr-85.qza \
+  --o-unmatched-sequences unmatched-cr-85.qza
